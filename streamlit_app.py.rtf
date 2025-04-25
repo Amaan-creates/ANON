@@ -1,0 +1,128 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2812
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 # ANON: Tata AutoComp Innovation Feedback Web App (Streamlit Version)\
+\
+import streamlit as st\
+import pandas as pd\
+from datetime import datetime\
+import plotly.express as px\
+from wordcloud import WordCloud\
+import matplotlib.pyplot as plt\
+from bertopic import BERTopic\
+import random\
+\
+# --- PAGE CONFIG ---\
+st.set_page_config(page_title="ANON Dashboard | Tata AutoComp", layout="wide")\
+\
+# --- HEADER / BRANDING ---\
+st.markdown("""\
+<div style="background-color:#0066b3;padding:10px 20px;display:flex;align-items:center;">\
+  <img src="https://www.tataautocomp.com/wp-content/themes/tataautocomp/images/logo.svg" style="height:40px;margin-right:20px;">\
+  <h1 style="color:white;font-family:Arial, sans-serif;font-size:24px;">ANON: Tata AutoComp Innovation Feedback</h1>\
+</div>\
+""", unsafe_allow_html=True)\
+\
+# --- SAMPLE DATA ---\
+if 'ideas_df' not in st.session_state:\
+    sample_ideas = [\
+        "Cross-department collaboration is too slow and manual.",\
+        "Lack of clear promotion pathways affects motivation.",\
+        "Need better documentation for EV battery assembly process.",\
+        "Lunch break timing overlaps reduce assembly line efficiency.",\
+        "Inconsistent email updates cause confusion between plants.",\
+        "Too many unnecessary meetings slow down project sprints.",\
+        "Pressure during year-end affects mental health.",\
+        "No clarity on skills needed for internal role switches."\
+    ]\
+    sample_moods = ["\uc0\u55357 \u56864 ", "\u55357 \u56898 ", "\u55358 \u56596 ", "\u55357 \u56848 ", "\u55357 \u56842 "]\
+    st.session_state.ideas_df = pd.DataFrame([\{\
+        'text': text,\
+        'mood': random.choice(sample_moods),\
+        'timestamp': datetime.now(),\
+        'status': random.choice(["\uc0\u55357 \u57313  New", "\u55357 \u57314  Reviewed", "\u55357 \u56628  Addressed"]),\
+    \} for text in sample_ideas])\
+\
+ideas_df = st.session_state.ideas_df\
+\
+# --- SIDEBAR NAV ---\
+page = st.sidebar.radio("\uc0\u55357 \u56514  Navigation", ["\u55357 \u56522  Dashboard", "\u55358 \u56809  Submit Idea", "\u55358 \u56800  AI Clusters", "\u55357 \u56580  Tone Translator", "\u55357 \u56549  Export Data"])\
+\
+# --- DASHBOARD ---\
+if page == "\uc0\u55357 \u56522  Dashboard":\
+    st.title("\uc0\u55357 \u56522  Mood Dashboard")\
+\
+    st.subheader("Mood Distribution")\
+    mood_counts = ideas_df['mood'].value_counts()\
+    fig = px.bar(x=mood_counts.index, y=mood_counts.values, labels=\{'x': 'Mood', 'y': 'Count'\}, color_discrete_sequence=['#0066b3'])\
+    st.plotly_chart(fig)\
+\
+    st.subheader("WordCloud")\
+    text = " ".join(ideas_df["text"])\
+    if text.strip():\
+        wordcloud = WordCloud(width=800, height=400, background_color="white").generate(text)\
+        fig, ax = plt.subplots(figsize=(10, 5))\
+        ax.imshow(wordcloud, interpolation='bilinear')\
+        ax.axis("off")\
+        st.pyplot(fig)\
+    else:\
+        st.warning("No text to show.")\
+\
+# --- SUBMIT IDEA ---\
+elif page == "\uc0\u55358 \u56809  Submit Idea":\
+    st.title("\uc0\u55358 \u56809  Submit an Idea")\
+    with st.form("submit_form"):\
+        text_input = st.text_area("Enter your idea anonymously:")\
+        mood = st.selectbox("Mood", ["\uc0\u55357 \u56864  Frustrated", "\u55357 \u56898  Hopeful", "\u55358 \u56596  Confused", "\u55357 \u56848  Neutral", "\u55357 \u56842  Excited"])\
+        submitted = st.form_submit_button("Submit")\
+        if submitted:\
+            if text_input.strip():\
+                new_row = \{\
+                    "text": text_input.strip(),\
+                    "mood": mood,\
+                    "timestamp": datetime.now(),\
+                    "status": "\uc0\u55357 \u57313  New"\
+                \}\
+                st.session_state.ideas_df = pd.concat([st.session_state.ideas_df, pd.DataFrame([new_row])], ignore_index=True)\
+                st.success("\uc0\u9989  Idea submitted successfully.")\
+                st.experimental_rerun()\
+            else:\
+                st.warning("Please enter a valid idea.")\
+\
+# --- AI CLUSTERS ---\
+elif page == "\uc0\u55358 \u56800  AI Clusters":\
+    st.title("\uc0\u55358 \u56800  AI-Detected Topic Clusters")\
+    if not ideas_df.empty:\
+        topic_model = BERTopic(verbose=False)\
+        topics, _ = topic_model.fit_transform(ideas_df["text"])\
+        st.session_state.ideas_df['topic'] = topics\
+\
+        topic_info = topic_model.get_topic_info()\
+        st.dataframe(topic_info.head())\
+\
+        st.plotly_chart(topic_model.visualize_topics())\
+\
+# --- TONE TRANSLATOR ---\
+elif page == "\uc0\u55357 \u56580  Tone Translator":\
+    st.title("\uc0\u55357 \u56580  Tone Translator")\
+    input_text = st.text_area("Engineering phrasing:")\
+    if st.button("Translate"):\
+        if input_text.strip():\
+            mgmt_tone = f"We acknowledge the concern: '\{input_text\}'. This will be reviewed for continuous improvement."\
+            eng_tone = f"'\{input_text\}' \'97 this needs to be fixed now."\
+            st.markdown(f"**\uc0\u55357 \u56546  Management Style:** \{mgmt_tone\}")\
+            st.markdown(f"**\uc0\u55357 \u56615  Engineering Style:** \{eng_tone\}")\
+        else:\
+            st.warning("Please enter a phrase to translate.")\
+\
+# --- EXPORT DATA ---\
+elif page == "\uc0\u55357 \u56549  Export Data":\
+    st.title("\uc0\u55357 \u56549  Export All Data")\
+    st.dataframe(ideas_df)\
+    csv = ideas_df.to_csv(index=False).encode('utf-8')\
+    st.download_button("Download as CSV", data=csv, file_name='anon_ideas.csv', mime='text/csv')\
+}
